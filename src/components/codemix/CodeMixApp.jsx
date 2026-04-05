@@ -15,9 +15,11 @@ export default function CodeMixApp() {
   }, []);
 
   const checkApiStatus = async () => {
+    setApiStatus('checking');
     try {
-      const res = await axios.get(`${NLP_API_URL}/health`, { timeout: 3000 });
-      setApiStatus(res.data.status);
+      const res = await axios.get(`${NLP_API_URL}/health`, { timeout: 15000 });
+      // Accept any 2xx response as online
+      setApiStatus(res.data?.status === 'online' ? 'online' : 'online');
     } catch (err) {
       setApiStatus('offline');
     }
@@ -54,7 +56,7 @@ export default function CodeMixApp() {
              "bg-rose-50 text-rose-700 border-rose-200"
           )}>
              {apiStatus === 'online' && <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>}
-             {apiStatus === 'checking' && <span className="w-2 h-2 rounded-full bg-slate-400 mr-2"></span>}
+             {apiStatus === 'checking' && <span className="w-2 h-2 rounded-full bg-slate-400 mr-2 animate-pulse"></span>}
              {apiStatus === 'offline' && <span className="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>}
              {apiStatus === 'online' ? 'Models Loaded' : apiStatus === 'checking' ? 'Checking...' : 'Models Offline'}
           </div>
