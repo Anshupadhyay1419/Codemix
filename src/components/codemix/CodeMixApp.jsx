@@ -14,15 +14,25 @@ export default function CodeMixApp() {
     checkApiStatus();
   }, []);
 
-  const checkApiStatus = async () => {
+  const checkApiStatus = async (retries = 4) => {
     setApiStatus('checking');
-    try {
-      const res = await axios.get(`${NLP_API_URL}/health`, { timeout: 15000 });
-      // Accept any 2xx response as online
-      setApiStatus(res.data?.status === 'online' ? 'online' : 'online');
-    } catch (err) {
-      setApiStatus('offline');
+    for (let i = 0; i < retries; i++) {
+      try {
+        const res = await axios.get(`${NLP_API_URL}/health`, { timeout: 20000 });
+        if (res.status === 200) {
+          setApiStatus('online');
+          return;
+        }
+      } catch (err) {
+        const status = err?.response?.status;
+        // 503 = HF Space is waking up, retry after delay
+        if (status === 503 && i < retries - 1) {
+          await new Promise(r => setTimeout(r, 5000));
+          continue;
+        }
+      }
     }
+    setApiStatus('offline');
   };
 
   return (
@@ -58,7 +68,7 @@ export default function CodeMixApp() {
              {apiStatus === 'online' && <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>}
              {apiStatus === 'checking' && <span className="w-2 h-2 rounded-full bg-slate-400 mr-2 animate-pulse"></span>}
              {apiStatus === 'offline' && <span className="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>}
-             {apiStatus === 'online' ? 'Models Loaded' : apiStatus === 'checking' ? 'Checking...' : 'Models Offline'}
+             {apiStatus === 'online' ? 'Models Loaded' : apiStatus === 'checking' ? 'Waking up...' : 'Models Offline'}
           </div>
         </div>
       </div>
