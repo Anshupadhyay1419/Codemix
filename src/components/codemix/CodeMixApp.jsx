@@ -1,21 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
-import { RefreshCw, Wifi, WifiOff, Loader2 } from 'lucide-react';
-import { cn } from '../../utils';
-import { NLP_API_URL } from '../../config';
-import SingleTextAnalysis from './SingleTextAnalysis';
-import BatchAnalysis from './BatchAnalysis';
+import React, { useState, useEffect, useCallback } from "react";
+import axios from "axios";
+import { RefreshCw, WifiOff, Loader2 } from "lucide-react";
+import { NLP_API_URL } from "../../config";
+import SingleTextAnalysis from "./SingleTextAnalysis";
+import BatchAnalysis from "./BatchAnalysis";
 
 export default function CodeMixApp() {
-  const [status, setStatus] = useState('checking');
-  const [activeTab, setActiveTab] = useState('single');
+  const [status, setStatus] = useState("checking");
+  const [activeTab, setActiveTab] = useState("single");
 
   const checkStatus = useCallback(async (retries = 5) => {
-    setStatus('checking');
+    setStatus("checking");
     for (let i = 0; i < retries; i++) {
       try {
         const res = await axios.get(`${NLP_API_URL}/health`, { timeout: 20000 });
-        if (res.status === 200) { setStatus('online'); return; }
+        if (res.status === 200) { setStatus("online"); return; }
       } catch (err) {
         if (err?.response?.status === 503 && i < retries - 1) {
           await new Promise(r => setTimeout(r, 6000));
@@ -23,61 +22,67 @@ export default function CodeMixApp() {
         }
       }
     }
-    setStatus('offline');
+    setStatus("offline");
   }, []);
 
   useEffect(() => { checkStatus(); }, [checkStatus]);
 
+  const statusStyle = {
+    online:   { bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.2)",  color: "#34d399" },
+    checking: { bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.2)",  color: "#fbbf24" },
+    offline:  { bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.2)",   color: "#f87171" },
+  }[status];
+
   return (
-    <div className="flex flex-col gap-4" style={{ height: 'calc(100vh - 104px)' }}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 p-1 bg-white border border-gray-100 rounded-xl shadow-soft">
-          {[{ id: 'single', label: 'Single Text' }, { id: 'batch', label: 'Batch CSV' }].map(t => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", height: "calc(100vh - 116px)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px" }}>
+          {[{ id: "single", label: "Single Text" }, { id: "batch", label: "Batch CSV" }].map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={cn('px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
-                activeTab === t.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700')}>
+              style={{
+                padding: "6px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 500,
+                cursor: "pointer", transition: "all 0.15s",
+                border: activeTab === t.id ? "1px solid rgba(139,92,246,0.3)" : "1px solid transparent",
+                background: activeTab === t.id ? "linear-gradient(135deg, rgba(124,58,237,0.35), rgba(79,70,229,0.35))" : "transparent",
+                color: activeTab === t.id ? "white" : "#64748b",
+                boxShadow: activeTab === t.id ? "0 0 16px -4px rgba(139,92,246,0.4)" : "none",
+              }}>
               {t.label}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button onClick={() => checkStatus()} className="btn-ghost text-xs">
-            <RefreshCw className="w-3.5 h-3.5" />Refresh
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button className="btn-ghost" style={{ fontSize: "12px" }} onClick={() => checkStatus()}>
+            <RefreshCw style={{ width: "13px", height: "13px" }} />Refresh
           </button>
-          <div className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border',
-            status === 'online'   ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-            status === 'checking' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                                    'bg-red-50 text-red-600 border-red-100')}>
-            {status === 'online'   && <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />Models Online</>}
-            {status === 'checking' && <><Loader2 className="w-3 h-3 animate-spin" />Waking up...</>}
-            {status === 'offline'  && <><WifiOff className="w-3 h-3" />Offline</>}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", borderRadius: "9999px", fontSize: "12px", fontWeight: 500, background: statusStyle.bg, border: `1px solid ${statusStyle.border}`, color: statusStyle.color }}>
+            {status === "online"   && <><span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#34d399" }} />Models Online</>}
+            {status === "checking" && <><Loader2 style={{ width: "12px", height: "12px" }} />Waking up...</>}
+            {status === "offline"  && <><WifiOff style={{ width: "12px", height: "12px" }} />Offline</>}
           </div>
         </div>
       </div>
 
-      {/* Wake-up notice */}
-      {status === 'checking' && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-50 border border-amber-100 text-amber-700 text-xs animate-fade-in">
-          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+      {status === "checking" && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", borderRadius: "12px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", color: "#fbbf24", fontSize: "12px" }}>
+          <Loader2 style={{ width: "13px", height: "13px", flexShrink: 0 }} />
           HuggingFace Space is waking up — this may take 20–30 seconds on first load.
         </div>
       )}
 
-      {status === 'offline' && (
-        <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 animate-fade-in">
-          <p className="text-sm font-medium text-red-700 mb-0.5">Models Offline</p>
-          <p className="text-xs text-red-500">
-            The HuggingFace Space may be sleeping. Click Refresh or{' '}
-            <a href="https://huggingface.co/spaces/anant-ai/backend" target="_blank" rel="noreferrer" className="underline">visit the Space</a> to wake it up.
+      {status === "offline" && (
+        <div style={{ padding: "14px 16px", borderRadius: "12px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)" }}>
+          <p style={{ fontSize: "13px", fontWeight: 600, color: "#f87171", marginBottom: "4px" }}>Models Offline</p>
+          <p style={{ fontSize: "12px", color: "#ef4444" }}>
+            The HuggingFace Space may be sleeping. Click Refresh or{" "}
+            <a href="https://huggingface.co/spaces/anant-ai/backend" target="_blank" rel="noreferrer" style={{ color: "#a78bfa", textDecoration: "underline" }}>visit the Space</a> to wake it up.
           </p>
         </div>
       )}
 
-      {/* Content */}
-      <div className={cn('flex-1 min-h-0 transition-opacity duration-200', status !== 'online' ? 'opacity-30 pointer-events-none' : '')}>
-        {activeTab === 'single' ? <SingleTextAnalysis apiUrl={NLP_API_URL} /> : <BatchAnalysis apiUrl={NLP_API_URL} />}
+      <div style={{ flex: 1, minHeight: 0, opacity: status !== "online" ? 0.3 : 1, pointerEvents: status !== "online" ? "none" : "auto", transition: "opacity 0.2s" }}>
+        {activeTab === "single" ? <SingleTextAnalysis apiUrl={NLP_API_URL} /> : <BatchAnalysis />}
       </div>
     </div>
   );

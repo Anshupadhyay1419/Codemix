@@ -1,131 +1,126 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { Send, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '../../utils';
+import React, { useState } from "react";
+import axios from "axios";
+import { Send, Loader2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 
 const MODELS = [
-  { value: 'smart',    label: 'Auto-Route (Smart Predict)' },
-  { value: 'all',      label: 'Run All Models' },
-  { value: 'misinfo',  label: 'Misinformation Detector' },
-  { value: 'fakenews', label: 'Fake News Classifier' },
-  { value: 'emosen',   label: 'Sentiment Analysis' },
-  { value: 'text',     label: 'Text Analysis Only' },
+  { value: "smart",    label: "Auto-Route (Smart Predict)" },
+  { value: "all",      label: "Run All Models" },
+  { value: "misinfo",  label: "Misinformation Detector" },
+  { value: "fakenews", label: "Fake News Classifier" },
+  { value: "emosen",   label: "Sentiment Analysis" },
+  { value: "text",     label: "Text Analysis Only" },
 ];
 
-function ConfBar({ value, color = 'bg-indigo-500' }) {
+function ConfBar({ value, color = "#7c3aed" }) {
   return (
-    <div className="progress-bar mt-1.5">
-      <div className={cn('progress-fill', color)} style={{ width: `${value}%` }} />
+    <div className="progress-bar" style={{ marginTop: "8px" }}>
+      <div className="progress-fill" style={{ width: `${value}%`, background: color }} />
     </div>
   );
 }
 
-function ResultCard({ title, children }) {
+function ResultSection({ title, children }) {
   return (
-    <div className="border border-gray-100 rounded-xl overflow-hidden">
-      <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", overflow: "hidden" }}>
+      <div style={{ padding: "8px 14px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <p style={{ fontSize: "10px", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em" }}>{title}</p>
       </div>
-      <div className="p-4">{children}</div>
+      <div style={{ padding: "14px" }}>{children}</div>
     </div>
   );
 }
 
 function MisinfoResult({ data }) {
-  const isInfo = data.label === 'misinfo';
+  const isInfo = data.label === "misinfo";
   return (
-    <ResultCard title="Misinformation">
-      <div className="flex items-center justify-between mb-2">
-        <span className={cn('font-semibold text-sm', isInfo ? 'text-red-600' : 'text-emerald-600')}>
-          {isInfo ? '⚠️ Misinformation' : '✅ Not Misinformation'}
+    <ResultSection title="Misinformation">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+        <span style={{ fontWeight: 600, fontSize: "13px", color: isInfo ? "#f87171" : "#34d399" }}>
+          {isInfo ? "⚠️ Misinformation" : "✅ Not Misinformation"}
         </span>
-        <span className="text-xs text-gray-400 font-mono">{data.confidence}%</span>
+        <span style={{ fontSize: "11px", color: "#475569", fontFamily: "JetBrains Mono, monospace" }}>{data.confidence}%</span>
       </div>
-      <ConfBar value={data.confidence} color={isInfo ? 'bg-red-500' : 'bg-emerald-500'} />
-      <div className="grid grid-cols-2 gap-2 mt-3">
-        <div className="stat-card py-2"><span className="text-xs text-gray-400">Misinfo</span><span className="text-sm font-semibold text-red-500">{data.prob_misinfo}%</span></div>
-        <div className="stat-card py-2"><span className="text-xs text-gray-400">Non-Misinfo</span><span className="text-sm font-semibold text-emerald-500">{data.prob_nonmisinfo}%</span></div>
+      <ConfBar value={data.confidence} color={isInfo ? "#ef4444" : "#10b981"} />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
+        <div className="stat-card" style={{ padding: "10px" }}><span style={{ fontSize: "10px", color: "#475569" }}>Misinfo</span><span style={{ fontSize: "14px", fontWeight: 600, color: "#f87171" }}>{data.prob_misinfo}%</span></div>
+        <div className="stat-card" style={{ padding: "10px" }}><span style={{ fontSize: "10px", color: "#475569" }}>Non-Misinfo</span><span style={{ fontSize: "14px", fontWeight: 600, color: "#34d399" }}>{data.prob_nonmisinfo}%</span></div>
       </div>
-    </ResultCard>
+    </ResultSection>
   );
 }
 
 function FakeNewsResult({ data }) {
-  const COLOR_MAP = { true:'text-emerald-600', 'mostly true':'text-emerald-500', mix:'text-amber-500', misleading:'text-amber-600', 'mostly fake':'text-red-500', fake:'text-red-600' };
+  const colors = { true:"#34d399", "mostly true":"#6ee7b7", mix:"#fbbf24", misleading:"#f59e0b", "mostly fake":"#f87171", fake:"#ef4444" };
   return (
-    <ResultCard title="Fake News">
-      <div className="flex items-center justify-between mb-2">
-        <span className={cn('font-semibold text-sm capitalize', COLOR_MAP[data.label] || 'text-gray-700')}>
-          {data.emoji} {data.label}
-        </span>
-        <span className="text-xs text-gray-400 font-mono">{data.confidence}%</span>
+    <ResultSection title="Fake News">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+        <span style={{ fontWeight: 600, fontSize: "13px", textTransform: "capitalize", color: colors[data.label] || "#e2e8f0" }}>{data.emoji} {data.label}</span>
+        <span style={{ fontSize: "11px", color: "#475569", fontFamily: "JetBrains Mono, monospace" }}>{data.confidence}%</span>
       </div>
       <ConfBar value={data.confidence} />
       {data.all_scores && (
-        <div className="mt-3 space-y-1.5">
+        <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
           {Object.entries(data.all_scores).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 w-24 capitalize">{k}</span>
-              <div className="flex-1 progress-bar"><div className="progress-fill bg-indigo-400" style={{ width: `${v}%` }} /></div>
-              <span className="text-xs font-mono text-gray-500 w-10 text-right">{v}%</span>
+            <div key={k} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "11px", color: "#475569", width: "90px", textTransform: "capitalize" }}>{k}</span>
+              <div className="progress-bar" style={{ flex: 1 }}><div className="progress-fill" style={{ width: `${v}%`, background: "rgba(124,58,237,0.6)" }} /></div>
+              <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono, monospace", color: "#475569", width: "36px", textAlign: "right" }}>{v}%</span>
             </div>
           ))}
         </div>
       )}
-    </ResultCard>
+    </ResultSection>
   );
 }
 
 function SentimentResult({ data }) {
-  const COLOR_MAP = { positive: 'text-emerald-600', neutral: 'text-gray-500', negative: 'text-red-600' };
+  const colors = { positive: "#34d399", neutral: "#94a3b8", negative: "#f87171" };
   return (
-    <ResultCard title="Sentiment">
-      <div className="flex items-center justify-between mb-2">
-        <span className={cn('font-semibold text-sm capitalize', COLOR_MAP[data.label?.toLowerCase()] || 'text-gray-700')}>
-          {data.emoji} {data.label}
-        </span>
-        <span className="text-xs text-gray-400 font-mono">{data.confidence}%</span>
+    <ResultSection title="Sentiment">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+        <span style={{ fontWeight: 600, fontSize: "13px", textTransform: "capitalize", color: colors[data.label?.toLowerCase()] || "#e2e8f0" }}>{data.emoji} {data.label}</span>
+        <span style={{ fontSize: "11px", color: "#475569", fontFamily: "JetBrains Mono, monospace" }}>{data.confidence}%</span>
       </div>
       <ConfBar value={data.confidence} />
       {data.all_scores && (
-        <div className="mt-3 space-y-1.5">
+        <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
           {Object.entries(data.all_scores).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 w-20 capitalize">{k}</span>
-              <div className="flex-1 progress-bar"><div className="progress-fill bg-indigo-400" style={{ width: `${v}%` }} /></div>
-              <span className="text-xs font-mono text-gray-500 w-10 text-right">{v}%</span>
+            <div key={k} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "11px", color: "#475569", width: "70px", textTransform: "capitalize" }}>{k}</span>
+              <div className="progress-bar" style={{ flex: 1 }}><div className="progress-fill" style={{ width: `${v}%`, background: "rgba(124,58,237,0.6)" }} /></div>
+              <span style={{ fontSize: "10px", fontFamily: "JetBrains Mono, monospace", color: "#475569", width: "36px", textAlign: "right" }}>{v}%</span>
             </div>
           ))}
         </div>
       )}
-    </ResultCard>
+    </ResultSection>
   );
 }
 
 function TextAnalysis({ data }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-gray-100 rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Text Analysis</p>
-        {open ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+    <div style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", overflow: "hidden" }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "rgba(255,255,255,0.03)", cursor: "pointer", border: "none" }}>
+        <p style={{ fontSize: "10px", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em" }}>Text Analysis</p>
+        {open ? <ChevronUp style={{ width: "13px", height: "13px", color: "#475569" }} /> : <ChevronDown style={{ width: "13px", height: "13px", color: "#475569" }} />}
       </button>
       {open && (
-        <div className="p-4 space-y-3 animate-fade-in">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="stat-card py-2"><span className="text-xs text-gray-400">Words</span><span className="text-lg font-semibold text-gray-800">{data.text_stats?.word_count}</span></div>
-            <div className="stat-card py-2"><span className="text-xs text-gray-400">Code-Mix</span><span className="text-lg font-semibold text-indigo-600">{(data.code_mix_ratio * 100).toFixed(0)}%</span></div>
+        <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <div className="stat-card" style={{ padding: "10px" }}><span style={{ fontSize: "10px", color: "#475569" }}>Words</span><span style={{ fontSize: "18px", fontWeight: 600, color: "#e2e8f0" }}>{data.text_stats?.word_count}</span></div>
+            <div className="stat-card" style={{ padding: "10px" }}><span style={{ fontSize: "10px", color: "#475569" }}>Code-Mix</span><span style={{ fontSize: "18px", fontWeight: 600, color: "#a78bfa" }}>{(data.code_mix_ratio * 100).toFixed(0)}%</span></div>
           </div>
           {data.languages_detected?.length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-1.5">Languages</p>
-              <div className="flex flex-wrap gap-1.5">{data.languages_detected.map(l => <span key={l} className="badge-blue">{l}</span>)}</div>
+              <p style={{ fontSize: "10px", color: "#475569", marginBottom: "6px" }}>Languages</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>{data.languages_detected.map(l => <span key={l} className="badge-blue">{l}</span>)}</div>
             </div>
           )}
           {data.slang_analysis?.internet_slang?.length > 0 && (
             <div>
-              <p className="text-xs text-gray-400 mb-1.5">Slang detected</p>
-              <div className="flex flex-wrap gap-1">{data.slang_analysis.internet_slang.map(s => <span key={s} className="font-mono text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">{s}</span>)}</div>
+              <p style={{ fontSize: "10px", color: "#475569", marginBottom: "6px" }}>Slang</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>{data.slang_analysis.internet_slang.map(s => <span key={s} style={{ fontFamily: "JetBrains Mono, monospace", fontSize: "11px", padding: "2px 8px", borderRadius: "6px", background: "rgba(245,158,11,0.1)", color: "#fbbf24", border: "1px solid rgba(245,158,11,0.2)" }}>{s}</span>)}</div>
             </div>
           )}
         </div>
@@ -135,70 +130,68 @@ function TextAnalysis({ data }) {
 }
 
 export default function SingleTextAnalysis({ apiUrl }) {
-  const [text, setText] = useState('');
-  const [model, setModel] = useState('smart');
+  const [text, setText] = useState("");
+  const [model, setModel] = useState("smart");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const analyse = async () => {
-    if (text.trim().length < 3) { setError('Please enter at least a few words.'); return; }
-    setLoading(true); setError(''); setResult(null);
+    if (text.trim().length < 3) { setError("Please enter at least a few words."); return; }
+    setLoading(true); setError(""); setResult(null);
     try {
       const res = await axios.post(`${apiUrl}/predict/${model}`, { text });
       setResult(res.data);
-    } catch (e) { setError(e.response?.data?.detail || e.response?.data?.error || 'Analysis failed.'); }
+    } catch (e) { setError(e.response?.data?.detail || e.response?.data?.error || "Analysis failed."); }
     finally { setLoading(false); }
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-full">
-      {/* Input */}
-      <div className="flex-1 card-flat flex flex-col overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-100">
-          <p className="font-medium text-gray-800 text-sm">Text Input</p>
-          <p className="text-xs text-gray-400 mt-0.5">Supports English, Hinglish, and Code-Mix</p>
+    <div style={{ display: "flex", gap: "16px", height: "100%" }}>
+      <div className="card-flat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ fontWeight: 500, color: "#e2e8f0", fontSize: "13px" }}>Text Input</p>
+          <p style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>Supports English, Hinglish, and Code-Mix</p>
         </div>
-        <div className="flex-1 p-4 flex flex-col gap-3">
+        <div style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
           <textarea value={text} onChange={e => setText(e.target.value)}
             placeholder="Enter text, tweet, or news headline here..."
-            className="flex-1 input resize-none min-h-[140px] font-mono text-sm leading-relaxed" />
+            className="input" style={{ flex: 1, resize: "none", minHeight: "140px", fontFamily: "JetBrains Mono, monospace", lineHeight: 1.6 }} />
           <select value={model} onChange={e => setModel(e.target.value)} className="select">
             {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-          {error && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
-          <button onClick={analyse} disabled={loading || !text.trim()} className="btn-primary">
-            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          {error && <p style={{ color: "#f87171", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}><AlertCircle style={{ width: "12px", height: "12px" }} />{error}</p>}
+          <button className="btn-primary" onClick={analyse} disabled={loading || !text.trim()}>
+            {loading ? <Loader2 style={{ width: "14px", height: "14px" }} /> : <Send style={{ width: "14px", height: "14px" }} />}
             Analyse
           </button>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="flex-1 card-flat flex flex-col overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-gray-100">
-          <p className="font-medium text-gray-800 text-sm">Results</p>
+      <div className="card-flat" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <p style={{ fontWeight: 500, color: "#e2e8f0", fontSize: "13px" }}>Results</p>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
           {!result && !loading && (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-300">
-              <Send className="w-8 h-8" />
-              <p className="text-sm">Run an analysis to see results</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "8px", color: "#1e293b" }}>
+              <Send style={{ width: "32px", height: "32px" }} />
+              <p style={{ fontSize: "13px" }}>Run an analysis to see results</p>
             </div>
           )}
           {loading && (
-            <div className="flex flex-col items-center justify-center h-full gap-2">
-              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-              <p className="text-sm text-gray-400">Analysing...</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "8px" }}>
+              <Loader2 style={{ width: "24px", height: "24px", color: "#7c3aed" }} />
+              <p style={{ fontSize: "13px", color: "#475569" }}>Analysing...</p>
             </div>
           )}
           {result && !loading && (
-            <div className="space-y-3 animate-slide-up">
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               {result.misinfo  && <MisinfoResult data={result.misinfo} />}
               {result.fakenews && <FakeNewsResult data={result.fakenews} />}
               {result.label !== undefined && result.emoji !== undefined && !result.misinfo && <SentimentResult data={result} />}
               {result.text_analysis && <TextAnalysis data={result.text_analysis} />}
-              {result.routed_to && <p className="text-xs text-gray-400 text-center">Routed to: <span className="font-mono text-gray-600">{result.routed_to}</span></p>}
+              {result.routed_to && <p style={{ fontSize: "11px", color: "#334155", textAlign: "center" }}>Routed to: <span style={{ fontFamily: "JetBrains Mono, monospace", color: "#7c3aed" }}>{result.routed_to}</span></p>}
             </div>
           )}
         </div>
