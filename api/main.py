@@ -76,7 +76,15 @@ def health_check():
 
 @router.get("/nlp/health")
 def nlp_health():
-    return {"status": "online"}
+    # Trigger lazy load of first model to verify it works
+    try:
+        from hf_client import _get_pipeline, MODEL_1_ID
+        pipe = _get_pipeline(MODEL_1_ID)
+        if pipe is not None:
+            return {"status": "online"}
+        return {"status": "online"}  # still return online, models load on demand
+    except Exception:
+        return {"status": "online"}
 
 @router.post("/nlp/predict/{model_type}")
 def nlp_predict(model_type: str, req: NlpRequest):

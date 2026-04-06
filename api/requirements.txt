@@ -8,6 +8,7 @@ openpyxl
 pydantic
 torch
 transformers
+sentencepiece
+protobuf
 requests
 python-dotenv
-python-multipart
