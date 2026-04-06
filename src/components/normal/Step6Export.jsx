@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import { Download, FileSpreadsheet, FileText, CheckCircle, Wand2, Loader2 } from 'lucide-react';
 import { cn } from '../../utils';
 
-export default function Step6Export({ apiUrl, datasetInfo }) {
+export default function Step6Export({ apiUrl }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -29,7 +29,7 @@ export default function Step6Export({ apiUrl, datasetInfo }) {
     try {
       if (Object.keys(renames).length) await axios.post(`${apiUrl}/rename/apply`, { renames });
       setApplied(true);
-    } catch (e) { alert('Failed to apply renames.'); }
+    } catch (e) { alert('Failed.'); }
     finally { setApplying(false); }
   };
 
@@ -39,80 +39,68 @@ export default function Step6Export({ apiUrl, datasetInfo }) {
       const r = await axios.get(`${apiUrl}/export/data`);
       const { filename, data, columns } = r.data;
       const base = filename.replace('.csv', '');
-
       if (type === 'csv') {
-        const csv = Papa.unparse(data, { columns });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        triggerDownload(blob, `${base}_cleaned.csv`);
-      } else if (type === 'xlsx') {
+        const blob = new Blob([Papa.unparse(data, { columns })], { type: 'text/csv' });
+        trigger(blob, `${base}_cleaned.csv`);
+      } else {
         const ws = XLSX.utils.json_to_sheet(data, { header: columns });
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Cleaned Data');
+        XLSX.utils.book_append_sheet(wb, ws, 'Cleaned');
         XLSX.writeFile(wb, `${base}_cleaned.xlsx`);
       }
     } catch (e) { alert('Export failed.'); }
     finally { setExporting(null); }
   };
 
-  const triggerDownload = (blob, name) => {
-    const url = URL.createObjectURL(blob);
+  const trigger = (blob, name) => {
     const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
+    a.href = URL.createObjectURL(blob); a.download = name; a.click();
   };
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Column renames */}
-      <div className="card space-y-4">
-        <div className="flex items-center gap-2">
-          <Wand2 className="w-5 h-5 text-brand-400" />
-          <p className="font-semibold text-slate-200">AI Column Rename Suggestions</p>
-        </div>
-
+    <div className="space-y-5 animate-fade-in">
+      {/* Renames */}
+      <div className="space-y-3">
+        <p className="section-title">Column Rename Suggestions</p>
         {loading ? (
-          <div className="flex items-center gap-2 text-slate-500 text-sm"><Loader2 className="w-4 h-4 animate-spin" />Loading suggestions...</div>
+          <div className="flex items-center gap-2 text-gray-400 text-xs"><Loader2 className="w-3.5 h-3.5 animate-spin" />Loading...</div>
         ) : suggestions.length === 0 ? (
-          <p className="text-slate-500 text-sm">No rename suggestions available.</p>
+          <p className="text-xs text-gray-400">No suggestions available.</p>
         ) : (
-          <div className="space-y-2">
+          <>
             {suggestions.map((s, i) => (
-              <label key={s.original} className={cn('flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all',
-                s.accepted ? 'border-brand-500/40 bg-brand-500/5' : 'border-slate-700/50 glass-light')}>
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" checked={!!s.accepted} onChange={() => toggle(i)} className="accent-brand-500 w-4 h-4" />
-                  <span className="font-mono text-xs text-slate-400">{s.original}</span>
-                  <span className="text-slate-600">→</span>
-                  <span className="font-mono text-xs text-brand-400">{s.suggested}</span>
-                </div>
-                {s.reason && <span className="text-xs text-slate-600 hidden sm:block">{s.reason}</span>}
+              <label key={s.original} className={cn('flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all',
+                s.accepted ? 'border-gray-300 bg-gray-50' : 'border-gray-100 hover:border-gray-200')}>
+                <input type="checkbox" checked={!!s.accepted} onChange={() => toggle(i)} className="accent-gray-900 w-3.5 h-3.5" />
+                <span className="font-mono text-xs text-gray-500">{s.original}</span>
+                <span className="text-gray-300">→</span>
+                <span className="font-mono text-xs text-gray-800 font-medium">{s.suggested}</span>
               </label>
             ))}
             {!applied ? (
-              <button onClick={applyRenames} disabled={applying} className="btn-primary w-full mt-2">
-                {applying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                Apply Selected Renames
+              <button onClick={applyRenames} disabled={applying} className="btn-primary w-full">
+                {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                Apply Renames
               </button>
             ) : (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
-                <CheckCircle className="w-4 h-4" />Renames applied successfully
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs">
+                <CheckCircle className="w-3.5 h-3.5" />Applied successfully
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 
       {/* Export */}
-      <div className="card space-y-4">
-        <p className="font-semibold text-slate-200">Export Cleaned Dataset</p>
-        <p className="text-xs text-slate-500">Download your cleaned data in your preferred format.</p>
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => download('csv')} disabled={!!exporting} className="btn-ghost border border-slate-700 flex-col py-4 h-auto gap-2">
-            {exporting === 'csv' ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileText className="w-6 h-6 text-emerald-400" />}
+      <div className="space-y-3 pt-4 border-t border-gray-100">
+        <p className="section-title">Export</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => download('csv')} disabled={!!exporting} className="btn-secondary flex-col py-4 h-auto gap-1.5">
+            {exporting === 'csv' ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5 text-emerald-500" />}
             <span className="text-xs">CSV</span>
           </button>
-          <button onClick={() => download('xlsx')} disabled={!!exporting} className="btn-ghost border border-slate-700 flex-col py-4 h-auto gap-2">
-            {exporting === 'xlsx' ? <Loader2 className="w-6 h-6 animate-spin" /> : <FileSpreadsheet className="w-6 h-6 text-brand-400" />}
+          <button onClick={() => download('xlsx')} disabled={!!exporting} className="btn-secondary flex-col py-4 h-auto gap-1.5">
+            {exporting === 'xlsx' ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5 text-indigo-500" />}
             <span className="text-xs">Excel</span>
           </button>
         </div>

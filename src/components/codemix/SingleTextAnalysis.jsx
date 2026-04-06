@@ -8,14 +8,11 @@ const MODELS = [
   { value: 'all',      label: 'Run All Models' },
   { value: 'misinfo',  label: 'Misinformation Detector' },
   { value: 'fakenews', label: 'Fake News Classifier' },
-  { value: 'emosen',   label: 'Sentiment Analysis (EmoSen)' },
+  { value: 'emosen',   label: 'Sentiment Analysis' },
   { value: 'text',     label: 'Text Analysis Only' },
 ];
 
-const FAKE_COLORS = { true:'text-emerald-400', 'mostly true':'text-emerald-300', mix:'text-amber-400', misleading:'text-amber-500', 'mostly fake':'text-red-400', fake:'text-red-500' };
-const SENT_COLORS = { positive:'text-emerald-400', neutral:'text-slate-400', negative:'text-red-400' };
-
-function ConfBar({ value, color = 'bg-brand-500' }) {
+function ConfBar({ value, color = 'bg-indigo-500' }) {
   return (
     <div className="progress-bar mt-1.5">
       <div className={cn('progress-fill', color)} style={{ width: `${value}%` }} />
@@ -23,97 +20,112 @@ function ConfBar({ value, color = 'bg-brand-500' }) {
   );
 }
 
+function ResultCard({ title, children }) {
+  return (
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
 function MisinfoResult({ data }) {
   const isInfo = data.label === 'misinfo';
   return (
-    <div className={cn('p-4 rounded-xl border', isInfo ? 'bg-red-500/10 border-red-500/20' : 'bg-emerald-500/10 border-emerald-500/20')}>
+    <ResultCard title="Misinformation">
       <div className="flex items-center justify-between mb-2">
-        <span className={cn('font-bold text-sm', isInfo ? 'text-red-400' : 'text-emerald-400')}>
+        <span className={cn('font-semibold text-sm', isInfo ? 'text-red-600' : 'text-emerald-600')}>
           {isInfo ? '⚠️ Misinformation' : '✅ Not Misinformation'}
         </span>
-        <span className="text-xs text-slate-400 font-mono">{data.confidence}%</span>
+        <span className="text-xs text-gray-400 font-mono">{data.confidence}%</span>
       </div>
       <ConfBar value={data.confidence} color={isInfo ? 'bg-red-500' : 'bg-emerald-500'} />
       <div className="grid grid-cols-2 gap-2 mt-3">
-        <div className="stat-card"><span className="text-xs text-slate-500">Misinfo</span><span className="text-sm font-bold text-red-400">{data.prob_misinfo}%</span></div>
-        <div className="stat-card"><span className="text-xs text-slate-500">Non-Misinfo</span><span className="text-sm font-bold text-emerald-400">{data.prob_nonmisinfo}%</span></div>
+        <div className="stat-card py-2"><span className="text-xs text-gray-400">Misinfo</span><span className="text-sm font-semibold text-red-500">{data.prob_misinfo}%</span></div>
+        <div className="stat-card py-2"><span className="text-xs text-gray-400">Non-Misinfo</span><span className="text-sm font-semibold text-emerald-500">{data.prob_nonmisinfo}%</span></div>
       </div>
-    </div>
+    </ResultCard>
   );
 }
 
 function FakeNewsResult({ data }) {
+  const COLOR_MAP = { true:'text-emerald-600', 'mostly true':'text-emerald-500', mix:'text-amber-500', misleading:'text-amber-600', 'mostly fake':'text-red-500', fake:'text-red-600' };
   return (
-    <div className="p-4 rounded-xl border border-slate-700/50 glass-light">
-      <div className="flex items-center justify-between mb-3">
-        <span className={cn('font-bold text-sm capitalize', FAKE_COLORS[data.label] || 'text-slate-300')}>
+    <ResultCard title="Fake News">
+      <div className="flex items-center justify-between mb-2">
+        <span className={cn('font-semibold text-sm capitalize', COLOR_MAP[data.label] || 'text-gray-700')}>
           {data.emoji} {data.label}
         </span>
-        <span className="text-xs text-slate-400 font-mono">{data.confidence}%</span>
+        <span className="text-xs text-gray-400 font-mono">{data.confidence}%</span>
       </div>
-      <ConfBar value={data.confidence} color="bg-brand-500" />
+      <ConfBar value={data.confidence} />
       {data.all_scores && (
         <div className="mt-3 space-y-1.5">
           {Object.entries(data.all_scores).map(([k, v]) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-24 capitalize">{k}</span>
-              <div className="flex-1 progress-bar"><div className="progress-fill bg-brand-500/60" style={{ width: `${v}%` }} /></div>
-              <span className="text-xs font-mono text-slate-400 w-10 text-right">{v}%</span>
+              <span className="text-xs text-gray-400 w-24 capitalize">{k}</span>
+              <div className="flex-1 progress-bar"><div className="progress-fill bg-indigo-400" style={{ width: `${v}%` }} /></div>
+              <span className="text-xs font-mono text-gray-500 w-10 text-right">{v}%</span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </ResultCard>
   );
 }
 
 function SentimentResult({ data }) {
+  const COLOR_MAP = { positive: 'text-emerald-600', neutral: 'text-gray-500', negative: 'text-red-600' };
   return (
-    <div className="p-4 rounded-xl border border-slate-700/50 glass-light">
+    <ResultCard title="Sentiment">
       <div className="flex items-center justify-between mb-2">
-        <span className={cn('font-bold text-sm capitalize', SENT_COLORS[data.label?.toLowerCase()] || 'text-slate-300')}>
+        <span className={cn('font-semibold text-sm capitalize', COLOR_MAP[data.label?.toLowerCase()] || 'text-gray-700')}>
           {data.emoji} {data.label}
         </span>
-        <span className="text-xs text-slate-400 font-mono">{data.confidence}%</span>
+        <span className="text-xs text-gray-400 font-mono">{data.confidence}%</span>
       </div>
-      <ConfBar value={data.confidence} color="bg-brand-500" />
+      <ConfBar value={data.confidence} />
       {data.all_scores && (
         <div className="mt-3 space-y-1.5">
           {Object.entries(data.all_scores).map(([k, v]) => (
             <div key={k} className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-20 capitalize">{k}</span>
-              <div className="flex-1 progress-bar"><div className="progress-fill bg-brand-500/60" style={{ width: `${v}%` }} /></div>
-              <span className="text-xs font-mono text-slate-400 w-10 text-right">{v}%</span>
+              <span className="text-xs text-gray-400 w-20 capitalize">{k}</span>
+              <div className="flex-1 progress-bar"><div className="progress-fill bg-indigo-400" style={{ width: `${v}%` }} /></div>
+              <span className="text-xs font-mono text-gray-500 w-10 text-right">{v}%</span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </ResultCard>
   );
 }
 
 function TextAnalysis({ data }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="glass-light rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-700/20 transition-colors">
-        <span className="text-sm font-semibold text-slate-300">Text Analysis</span>
-        {open ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+    <div className="border border-gray-100 rounded-xl overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Text Analysis</p>
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
       </button>
       {open && (
-        <div className="px-4 pb-4 space-y-3 animate-fade-in">
+        <div className="p-4 space-y-3 animate-fade-in">
           <div className="grid grid-cols-2 gap-2">
-            <div className="stat-card"><span className="text-xs text-slate-500">Words</span><span className="text-lg font-bold text-slate-200">{data.text_stats?.word_count}</span></div>
-            <div className="stat-card"><span className="text-xs text-slate-500">Code-Mix Ratio</span><span className="text-lg font-bold text-brand-400">{(data.code_mix_ratio * 100).toFixed(0)}%</span></div>
+            <div className="stat-card py-2"><span className="text-xs text-gray-400">Words</span><span className="text-lg font-semibold text-gray-800">{data.text_stats?.word_count}</span></div>
+            <div className="stat-card py-2"><span className="text-xs text-gray-400">Code-Mix</span><span className="text-lg font-semibold text-indigo-600">{(data.code_mix_ratio * 100).toFixed(0)}%</span></div>
           </div>
           {data.languages_detected?.length > 0 && (
-            <div><p className="text-xs text-slate-500 mb-1.5">Languages</p>
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">Languages</p>
               <div className="flex flex-wrap gap-1.5">{data.languages_detected.map(l => <span key={l} className="badge-blue">{l}</span>)}</div>
             </div>
           )}
           {data.slang_analysis?.internet_slang?.length > 0 && (
-            <div><p className="text-xs text-slate-500 mb-1.5">Internet Slang</p>
-              <div className="flex flex-wrap gap-1">{data.slang_analysis.internet_slang.map(s => <span key={s} className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-slate-700">{s}</span>)}</div>
+            <div>
+              <p className="text-xs text-gray-400 mb-1.5">Slang detected</p>
+              <div className="flex flex-wrap gap-1">{data.slang_analysis.internet_slang.map(s => <span key={s} className="font-mono text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 border border-amber-100">{s}</span>)}</div>
             </div>
           )}
         </div>
@@ -142,54 +154,51 @@ export default function SingleTextAnalysis({ apiUrl }) {
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">
       {/* Input */}
-      <div className="flex-1 flex flex-col glass rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/50">
-          <p className="font-semibold text-slate-200 text-sm">Text Input</p>
-          <p className="text-xs text-slate-500 mt-0.5">Supports English, Hinglish, and Code-Mix text</p>
+      <div className="flex-1 card-flat flex flex-col overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100">
+          <p className="font-medium text-gray-800 text-sm">Text Input</p>
+          <p className="text-xs text-gray-400 mt-0.5">Supports English, Hinglish, and Code-Mix</p>
         </div>
-        <div className="flex-1 p-4 flex flex-col gap-4">
+        <div className="flex-1 p-4 flex flex-col gap-3">
           <textarea value={text} onChange={e => setText(e.target.value)}
             placeholder="Enter text, tweet, or news headline here..."
-            className="flex-1 input resize-none min-h-[160px] font-mono text-sm leading-relaxed" />
-
+            className="flex-1 input resize-none min-h-[140px] font-mono text-sm leading-relaxed" />
           <select value={model} onChange={e => setModel(e.target.value)} className="select">
             {MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
-
-          {error && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
-
+          {error && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
           <button onClick={analyse} disabled={loading || !text.trim()} className="btn-primary">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
             Analyse
           </button>
         </div>
       </div>
 
       {/* Results */}
-      <div className="flex-1 flex flex-col glass rounded-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-700/50">
-          <p className="font-semibold text-slate-200 text-sm">Analysis Results</p>
+      <div className="flex-1 card-flat flex flex-col overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-gray-100">
+          <p className="font-medium text-gray-800 text-sm">Results</p>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {!result && !loading && (
-            <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-600">
-              <Send className="w-10 h-10" />
+            <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-300">
+              <Send className="w-8 h-8" />
               <p className="text-sm">Run an analysis to see results</p>
             </div>
           )}
           {loading && (
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <Loader2 className="w-8 h-8 text-brand-400 animate-spin" />
-              <p className="text-sm text-slate-500">Analysing...</p>
+            <div className="flex flex-col items-center justify-center h-full gap-2">
+              <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+              <p className="text-sm text-gray-400">Analysing...</p>
             </div>
           )}
           {result && !loading && (
             <div className="space-y-3 animate-slide-up">
-              {result.misinfo  && <div><p className="section-title">Misinformation</p><MisinfoResult data={result.misinfo} /></div>}
-              {result.fakenews && <div><p className="section-title">Fake News</p><FakeNewsResult data={result.fakenews} /></div>}
-              {(result.label && result.emoji !== undefined) && <div><p className="section-title">Sentiment</p><SentimentResult data={result} /></div>}
+              {result.misinfo  && <MisinfoResult data={result.misinfo} />}
+              {result.fakenews && <FakeNewsResult data={result.fakenews} />}
+              {result.label !== undefined && result.emoji !== undefined && !result.misinfo && <SentimentResult data={result} />}
               {result.text_analysis && <TextAnalysis data={result.text_analysis} />}
-              {result.routed_to && <p className="text-xs text-slate-600 text-center">Routed to: <span className="text-brand-400 font-mono">{result.routed_to}</span></p>}
+              {result.routed_to && <p className="text-xs text-gray-400 text-center">Routed to: <span className="font-mono text-gray-600">{result.routed_to}</span></p>}
             </div>
           )}
         </div>

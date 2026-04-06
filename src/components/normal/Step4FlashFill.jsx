@@ -24,57 +24,48 @@ export default function Step4FlashFill({ apiUrl, colTypes }) {
     finally { setLoading(false); }
   };
 
-  const applyTransform = async (id) => {
+  const apply = async (id) => {
     setApplying(id); setError('');
     try {
       const r = await axios.post(`${apiUrl}/flashfill/apply`, { column: col, transform_id: id });
       setResult(r.data);
-    } catch (e) { setError('Failed to apply transformation.'); }
+    } catch (e) { setError('Failed to apply.'); }
     finally { setApplying(null); }
   };
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <div className="card space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Wand2 className="w-5 h-5 text-brand-400" />
-          <p className="font-semibold text-slate-200">Intelligent FlashFill</p>
-        </div>
-        <p className="text-xs text-slate-500">Auto-detect and apply smart transformations to your columns.</p>
-
-        <div className="flex gap-3">
+      <div className="space-y-3">
+        <p className="section-title">FlashFill Transformations</p>
+        <div className="flex gap-2">
           <select value={col} onChange={e => { setCol(e.target.value); setSuggestions([]); setResult(null); }} className="select flex-1">
-            <option value="">Select a column...</option>
-            {cols.map(c => <option key={c} value={c}>{c} ({colTypes[c]?.type})</option>)}
+            <option value="">Select column...</option>
+            {cols.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <button onClick={getSuggestions} disabled={!col || loading} className="btn-primary shrink-0">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            Analyze
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
           </button>
         </div>
-
-        {error && <p className="text-amber-400 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
+        {error && <p className="text-amber-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
       </div>
 
       {suggestions.length > 0 && (
         <div className="space-y-2 animate-slide-up">
-          <p className="section-title">Suggested Transformations</p>
           {suggestions.map(s => (
-            <div key={s.id} className="glass-light rounded-xl p-4 flex items-start justify-between gap-4">
+            <div key={s.id} className="border border-gray-100 rounded-xl p-3.5 flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-200">{s.label}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{s.description}</p>
-                {s.preview && (
-                  <div className="mt-2 flex gap-2 flex-wrap">
+                <p className="text-sm font-medium text-gray-800">{s.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{s.description}</p>
+                {s.preview?.length > 0 && (
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
                     {s.preview.slice(0, 3).map((v, i) => (
-                      <span key={i} className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-brand-400 border border-slate-700">{String(v)}</span>
+                      <span key={i} className="font-mono text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-600">{String(v)}</span>
                     ))}
                   </div>
                 )}
               </div>
-              <button onClick={() => applyTransform(s.id)} disabled={applying === s.id} className="btn-primary shrink-0 text-xs">
-                {applying === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                Apply
+              <button onClick={() => apply(s.id)} disabled={applying === s.id} className="btn-secondary shrink-0 text-xs py-1.5 px-3">
+                {applying === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Apply'}
               </button>
             </div>
           ))}
@@ -82,9 +73,9 @@ export default function Step4FlashFill({ apiUrl, colTypes }) {
       )}
 
       {result && (
-        <div className="flex items-center gap-2 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm animate-slide-up">
-          <CheckCircle className="w-4 h-4 shrink-0" />
-          <span>Created column <strong className="font-mono">{result.new_column}</strong> — {result.success_count} rows transformed, {result.fail_count} failed</span>
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs animate-slide-up">
+          <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+          Created <span className="font-mono font-medium">{result.new_column}</span> — {result.success_count} rows
         </div>
       )}
     </div>
