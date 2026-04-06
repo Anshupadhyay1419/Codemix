@@ -1,199 +1,112 @@
 import React, { useState, useMemo } from 'react';
 import axios from 'axios';
-import { Settings, AlertTriangle, CheckCircle, Database } from 'lucide-react';
+import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '../../utils';
 
-const ALLOWED_STRATEGIES = {
-  numeric: ['mean', 'median', 'mode', 'fixed', 'drop', 'interpolate', 'ffill', 'bfill'],
-  categorical: ['mode', 'fixed', 'drop', 'ffill', 'bfill'],
-  text: ['mode', 'fixed', 'drop', 'ffill', 'bfill'],
-  email: ['mode', 'fixed', 'drop', 'ffill', 'bfill'],
-  phone: ['mode', 'fixed', 'drop', 'ffill', 'bfill'],
-  url: ['mode', 'fixed', 'drop', 'ffill', 'bfill'],
-  id: ['mode', 'fixed', 'drop', 'ffill', 'bfill'],
-  boolean: ['mode', 'fixed', 'drop'],
-  datetime: ['ffill', 'bfill', 'fixed', 'drop']
+const STRATEGIES = {
+  numeric: ['mean','median','mode','fixed','drop','interpolate','ffill','bfill'],
+  categorical: ['mode','fixed','drop','ffill','bfill'],
+  text: ['mode','fixed','drop','ffill','bfill'],
+  email: ['mode','fixed','drop','ffill','bfill'],
+  phone: ['mode','fixed','drop','ffill','bfill'],
+  url: ['mode','fixed','drop','ffill','bfill'],
+  id: ['mode','fixed','drop','ffill','bfill'],
+  boolean: ['mode','fixed','drop'],
+  datetime: ['ffill','bfill','fixed','drop'],
 };
 
-const STRATEGY_LABELS = {
-  mean: "Mean",
-  median: "Median",
-  mode: "Mode (Most frequent)",
-  fixed: "Fixed Value",
-  drop: "Drop Rows",
-  interpolate: "Interpolate",
-  ffill: "Forward Fill",
-  bfill: "Backward Fill"
-};
+const LABELS = { mean:'Mean', median:'Median', mode:'Mode', fixed:'Fixed Value', drop:'Drop Rows', interpolate:'Interpolate', ffill:'Forward Fill', bfill:'Backward Fill' };
 
-export default function Step3MissingValues({ apiUrl, colTypes, profileData, setProfileData, onRefreshPreview }) {
-  const [selectedCol, setSelectedCol] = useState('');
+export default function Step3MissingValues({ apiUrl, colTypes, profileData, setProfileData }) {
+  const [col, setCol] = useState('');
   const [strategy, setStrategy] = useState('');
-  const [fixedValue, setFixedValue] = useState('');
-
+  const [fixedVal, setFixedVal] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
 
-  const missingColumns = useMemo(() => {
-    if (!profileData) return [];
-    return profileData.columns.filter(c => c.missing_count > 0).sort((a, b) => b.missing_count - a.missing_count);
-  }, [profileData]);
+  const missingCols = useMemo(() =>
+    profileData?.columns?.filter(c => c.missing_count > 0).sort((a, b) => b.missing_count - a.missing_count) || [],
+    [profileData]
+  );
 
-  const activeColType = selectedCol && colTypes ? colTypes[selectedCol]?.type : null;
-
-  const availableStrategies = useMemo(() => {
-    if (!activeColType) return [];
-    return ALLOWED_STRATEGIES[activeColType] || ALLOWED_STRATEGIES['text'];
-  }, [activeColType]);
+  const colType = col && colTypes ? colTypes[col]?.type : null;
+  const available = colType ? (STRATEGIES[colType] || STRATEGIES.text) : [];
 
   const handleApply = async () => {
-    if (!selectedCol || !strategy) return;
-    if (strategy === 'fixed' && fixedValue === '') {
-      setError("Please enter a fixed value.");
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setResult(null);
-
+    if (!col || !strategy) return;
+    if (strategy === 'fixed' && !fixedVal) { setError('Enter a fixed value.'); return; }
+    setLoading(true); setError(''); setResult(null);
     try {
-      const res = await axios.post(`${apiUrl}/missing_strategy`, {
-        column: selectedCol,
-        strategy: strategy,
-        value: strategy === 'fixed' ? fixedValue : null
-      });
-
-      setResult({
-        col: selectedCol,
-        ...res.data
-      });
-
-      setSelectedCol('');
-      setStrategy('');
-      setFixedValue('');
-
-      const profRes = await axios.get(`${apiUrl}/profile`);
-      setProfileData(profRes.data);
-      onRefreshPreview(); // Refresh the main table
-
-    } catch (err) {
-      setError(err.response?.data?.detail || "Failed to apply strategy");
-    } finally {
-      setLoading(false);
-    }
+      const r = await axios.post(`${apiUrl}/missing_strategy`, { column: col, strategy, value: strategy === 'fixed' ? fixedVal : null });
+      setResult({ col, ...r.data });
+      // refresh profile
+      const p = await axios.get(`${apiUrl}/profile`);
+      setProfileData(p.data);
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to apply strategy.');
+    } finally { setLoading(false); }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="card-panel">
-         <h3 className="card-title text-slate-800">
-           <Database className="w-5 h-5 mr-2 text-indigo-500" />
-           Columns Needing Attention
-         </h3>
+  if (missingCols.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-16 gap-3">
+      <CheckCircle className="w-12 h-12 text-emerald-400" />
+      <p className="text-slate-300 font-medium">No missing values detected</p>
+      <p className="text-slate-500 text-sm">Your dataset looks clean!</p>
+    </div>
+  );
 
-         {missingColumns.length === 0 ? (
-           <div className="text-center py-8 text-emerald-600 bg-emerald-50 rounded-lg border border-emerald-200 shadow-sm">
-             <CheckCircle className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
-             <p className="font-bold">All clean!</p>
-             <p className="text-sm">No missing values found in the dataset.</p>
-           </div>
-         ) : (
-           <div className="space-y-2">
-             {missingColumns.map(c => (
-               <div
-                 key={c.name}
-                 onClick={() => { setSelectedCol(c.name); setStrategy(''); setResult(null); setError(''); }}
-                 className={cn("p-3 rounded-lg border cursor-pointer transition shadow-sm", selectedCol === c.name ? "bg-indigo-50 border-indigo-300 ring-1 ring-indigo-500" : "bg-white border-slate-200 hover:border-indigo-400 hover:shadow-md")}
-               >
-                 <div className="flex justify-between items-center mb-1">
-                   <span className={cn("font-bold truncate mr-2", selectedCol === c.name ? "text-indigo-700" : "text-slate-700")}>{c.name}</span>
-                   <span className="text-[10px] px-2 py-0.5 bg-slate-100 rounded-full font-bold uppercase text-slate-500">{colTypes[c.name]?.type || 'unknown'}</span>
-                 </div>
-                 <div className="text-sm font-medium text-rose-500 bg-rose-50 inline-block px-2 rounded">
-                   {c.missing_count.toLocaleString()} NULL ({c.missing_percent.toFixed(1)}%)
-                 </div>
-               </div>
-             ))}
-           </div>
-         )}
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {/* Missing columns overview */}
+      <div className="space-y-2">
+        <p className="section-title">Columns with Missing Values</p>
+        {missingCols.map(c => (
+          <button key={c.name} onClick={() => { setCol(c.name); setStrategy(''); setResult(null); }}
+            className={cn('w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left',
+              col === c.name ? 'border-brand-500/60 bg-brand-500/10' : 'border-slate-700/50 glass-light hover:border-slate-600')}>
+            <span className="text-sm font-medium text-slate-200">{c.name}</span>
+            <div className="flex items-center gap-3">
+              <div className="progress-bar w-24">
+                <div className="progress-fill bg-amber-500" style={{ width: `${Math.min(100, (c.missing_count / (c.missing_count + c.unique_count)) * 100)}%` }} />
+              </div>
+              <span className="text-xs text-amber-400 font-mono w-16 text-right">{c.missing_count} missing</span>
+            </div>
+          </button>
+        ))}
       </div>
 
-      {selectedCol && (
-        <div className="card-panel animate-in fade-in slide-in-from-bottom-2">
-           <h3 className="card-title text-slate-800">
-             <Settings className="w-5 h-5 mr-2 text-indigo-500" />
-             Apply Strategy
-           </h3>
+      {/* Strategy selector */}
+      {col && (
+        <div className="card space-y-4 animate-slide-up">
+          <p className="text-sm font-semibold text-slate-200">Fix: <span className="text-brand-400">{col}</span></p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {available.map(s => (
+              <button key={s} onClick={() => setStrategy(s)}
+                className={cn('px-3 py-2 rounded-lg text-xs font-medium border transition-all',
+                  strategy === s ? 'bg-brand-600 border-brand-500 text-white' : 'border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200')}>
+                {LABELS[s]}
+              </button>
+            ))}
+          </div>
 
-           <div className="space-y-4">
-             <div>
-               <label className="block text-sm font-bold text-slate-600 mb-1">Strategy for {selectedCol} ({activeColType})</label>
-               <select
-                 value={strategy}
-                 onChange={(e) => setStrategy(e.target.value)}
-                 className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-               >
-                 <option value="">-- Select a strategy --</option>
-                 {availableStrategies.map(s => (
-                   <option key={s} value={s}>{STRATEGY_LABELS[s]}</option>
-                 ))}
-               </select>
-             </div>
+          {strategy === 'fixed' && (
+            <input value={fixedVal} onChange={e => setFixedVal(e.target.value)} placeholder="Enter fixed value..." className="input" />
+          )}
 
-             {strategy === 'fixed' && (
-               <div>
-                 <label className="block text-sm font-bold text-slate-600 mb-1">Fixed Value</label>
-                 <input
-                   type={activeColType === 'numeric' ? 'number' : 'text'}
-                   value={fixedValue}
-                   onChange={(e) => setFixedValue(e.target.value)}
-                   placeholder="Enter value..."
-                   className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-                 />
-               </div>
-             )}
+          {error && <p className="text-red-400 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
 
-             <button
-               onClick={handleApply}
-               disabled={loading || !strategy}
-               className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-3 rounded-lg font-bold transition shadow-sm shadow-indigo-600/30"
-             >
-               {loading ? 'Processing...' : 'Apply Strategy'}
-             </button>
+          {result && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+              <CheckCircle className="w-4 h-4" />
+              Fixed {result.rows_affected} rows in <strong>{result.col}</strong>
+            </div>
+          )}
 
-             {error && (
-               <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg flex items-start text-sm shadow-sm font-medium">
-                 <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0 text-rose-500" />
-                 <span>{error}</span>
-               </div>
-             )}
-           </div>
-        </div>
-      )}
-
-      {result && (
-        <div className="card-panel bg-emerald-50 border-emerald-200 animate-in fade-in zoom-in duration-300">
-           <div className="flex items-center text-emerald-700 mb-3">
-             <CheckCircle className="w-5 h-5 mr-2" />
-             <h4 className="font-bold text-lg">Applied to {result.col}</h4>
-           </div>
-
-           <div className="grid grid-cols-3 gap-3 mb-4 text-center">
-             <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
-               <div className="text-xl font-bold text-slate-700">{result.rows_affected}</div>
-               <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">Updated</div>
-             </div>
-             <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
-               <div className="text-xl font-bold text-rose-500">{result.before}</div>
-               <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">Before</div>
-             </div>
-             <div className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm">
-               <div className="text-xl font-bold text-emerald-600">{result.after}</div>
-               <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">Remaining</div>
-             </div>
-           </div>
+          <button onClick={handleApply} disabled={!strategy || loading} className="btn-primary w-full">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Apply Strategy
+          </button>
         </div>
       )}
     </div>

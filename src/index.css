@@ -1,37 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    @apply bg-background text-textMain font-sans antialiased;
+    @apply bg-slate-950 text-slate-100 antialiased;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.15), transparent);
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-heading font-bold text-slate-900;
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-slate-900; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-700 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-600; }
+}
+
+@layer components {
+  .glass {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-slate-700/50;
   }
-}
-
-/* Custom scrollbar for light theme */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Global utility classes for cards */
-.card-panel {
-  @apply bg-surface border border-borderMain rounded-xl shadow-card p-6;
-}
-
-.card-title {
-  @apply text-lg font-bold text-slate-800 mb-4 flex items-center border-b border-slate-100 pb-3;
+  .glass-light {
+    @apply bg-slate-800/40 backdrop-blur-md border border-slate-700/30;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-brand-600/20 hover:shadow-brand-600/40 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 font-medium text-sm transition-all duration-200 disabled:opacity-50;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-medium text-sm transition-all duration-200 border border-red-500/20;
+  }
+  .card {
+    @apply glass rounded-2xl p-6;
+  }
+  .input {
+    @apply w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/30 transition-all;
+  }
+  .select {
+    @apply input appearance-none cursor-pointer;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .badge-blue   { @apply badge bg-brand-500/15 text-brand-400 border border-brand-500/20; }
+  .badge-green  { @apply badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20; }
+  .badge-red    { @apply badge bg-red-500/15 text-red-400 border border-red-500/20; }
+  .badge-amber  { @apply badge bg-amber-500/15 text-amber-400 border border-amber-500/20; }
+  .badge-slate  { @apply badge bg-slate-700/60 text-slate-400 border border-slate-600/40; }
+  .tab-btn {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+  }
+  .tab-btn-active {
+    @apply tab-btn bg-brand-600 text-white shadow-lg shadow-brand-600/20;
+  }
+  .tab-btn-inactive {
+    @apply tab-btn text-slate-400 hover:text-slate-200 hover:bg-slate-800;
+  }
+  .stat-card {
+    @apply glass-light rounded-xl p-4 flex flex-col gap-1;
+  }
+  .progress-bar {
+    @apply h-1.5 rounded-full bg-slate-700 overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full rounded-full transition-all duration-700;
+  }
+  .section-title {
+    @apply text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3;
+  }
+  .divider {
+    @apply border-t border-slate-700/50 my-4;
+  }
 }

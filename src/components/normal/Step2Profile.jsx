@@ -1,140 +1,116 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { ChevronRight, Database, Columns, AlertCircle, Copy, Cpu, LayoutDashboard, Trash2, Eye } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { cn } from '../../utils';
 
-const COLORS = ['#4f46e5', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#64748b'];
+const TYPE_BADGE = { numeric:'badge-blue', categorical:'badge-green', text:'badge-slate', datetime:'badge-amber', email:'badge-blue', phone:'badge-green', url:'badge-slate', boolean:'badge-amber', id:'badge-slate' };
+const COLORS = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#64748b'];
 
 export default function Step2Profile({ apiUrl, profileData, setProfileData, colTypes, datasetInfo, setDatasetInfo }) {
-  const [loading, setLoading] = useState(true);
-  const [duplicateData, setDuplicateData] = useState(null);
-  const [removingDups, setRemovingDups] = useState(false);
+  const [loading, setLoading] = useState(!profileData);
+  const [dupData, setDupData] = useState(null);
+  const [removing, setRemoving] = useState(false);
+  const [expanded, setExpanded] = useState(null);
 
-  useEffect(() => {
-    fetchProfile();
-    fetchDuplicates();
-  }, []);
+  useEffect(() => { if (!profileData) fetchProfile(); fetchDups(); }, []);
 
   const fetchProfile = async () => {
-    try {
-      const res = await axios.get(`${apiUrl}/profile`);
-      setProfileData(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true);
+    try { const r = await axios.get(`${apiUrl}/profile`); setProfileData(r.data); }
+    catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const fetchDuplicates = async () => {
-    try {
-      const res = await axios.get(`${apiUrl}/duplicates`);
-      setDuplicateData(res.data);
-    } catch (err) {
-      console.error(err);
-    }
+  const fetchDups = async () => {
+    try { const r = await axios.get(`${apiUrl}/duplicates`); setDupData(r.data); } catch (e) {}
   };
 
-  const handleRemoveDuplicates = async () => {
-    setRemovingDups(true);
+  const removeDups = async () => {
+    setRemoving(true);
     try {
-      const res = await axios.post(`${apiUrl}/remove_duplicates`);
-      alert(`Successfully removed ${res.data.removed} duplicate rows.`);
-      setDatasetInfo(prev => ({...prev, rows: prev.rows - res.data.removed}));
-      fetchProfile();
-      fetchDuplicates();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setRemovingDups(false);
-    }
+      const r = await axios.post(`${apiUrl}/remove_duplicates`);
+      setDatasetInfo(p => ({ ...p, rows: p.rows - r.data.removed }));
+      fetchProfile(); fetchDups();
+    } catch (e) {} finally { setRemoving(false); }
   };
 
-  if (loading || !profileData) {
-    return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-8 bg-slate-200 rounded w-1/2 mb-6"></div>
-        {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-white border border-slate-200 rounded-lg shadow-sm"></div>)}
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 text-brand-400 animate-spin" /></div>;
+  if (!profileData) return null;
 
-  const { summary, columns, type_distribution } = profileData;
-  const pieData = Object.entries(type_distribution).filter(([_, val]) => val > 0).map(([name, value]) => ({ name, value }));
+  const totalMissing = profileData.columns?.reduce((s, c) => s + c.missing_count, 0) || 0;
+  const missingPct = datasetInfo?.rows ? ((totalMissing / (datasetInfo.rows * (profileData.columns?.length || 1))) * 100).toFixed(1) : 0;
 
   return (
-    <div className="space-y-6">
-
-      <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-center grid grid-cols-2 gap-4">
-         <div className="p-2">
-            <div className="text-xl font-bold text-slate-800">{summary.total_missing_percent.toFixed(1)}%</div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mt-1">Total Missing</div>
-         </div>
-         <div className="p-2 border-l border-slate-100">
-            <div className="text-xl font-bold text-rose-500">{summary.duplicate_rows.toLocaleString()}</div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mt-1">Duplicates</div>
-         </div>
+    <div className="space-y-4 animate-fade-in">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Rows', value: datasetInfo?.rows?.toLocaleString() || '—', color: 'text-brand-400' },
+          { label: 'Columns', value: profileData.columns?.length || '—', color: 'text-emerald-400' },
+          { label: 'Missing Cells', value: `${missingPct}%`, color: totalMissing > 0 ? 'text-amber-400' : 'text-emerald-400' },
+          { label: 'Duplicates', value: dupData?.count ?? '—', color: dupData?.count > 0 ? 'text-red-400' : 'text-emerald-400' },
+        ].map(s => (
+          <div key={s.label} className="stat-card">
+            <span className="text-xs text-slate-500">{s.label}</span>
+            <span className={cn('text-2xl font-bold', s.color)}>{s.value}</span>
+          </div>
+        ))}
       </div>
 
-      {duplicateData && duplicateData.count > 0 && (
-        <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl shadow-sm">
-          <div className="flex items-center text-rose-700 mb-3">
-            <Copy className="w-5 h-5 mr-2" />
-            <span className="font-bold">Found {duplicateData.count} exact duplicate rows</span>
+      {dupData?.count > 0 && (
+        <div className="flex items-center justify-between p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+          <div className="flex items-center gap-2 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            <span>{dupData.count} duplicate rows detected</span>
           </div>
-          <button onClick={handleRemoveDuplicates} disabled={removingDups} className="w-full py-2 bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 rounded-lg font-bold text-sm transition shadow-sm disabled:opacity-50">
-             {removingDups ? "Removing..." : "Remove All Duplicates"}
+          <button onClick={removeDups} disabled={removing} className="btn-danger text-xs">
+            {removing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            Remove All
           </button>
         </div>
       )}
 
-      {/* Column Distributions styled like Cocoon */}
-      <div className="space-y-4">
-         <h3 className="font-bold text-slate-700 text-lg flex items-center border-b border-slate-200 pb-2">
-            <LayoutDashboard className="w-4 h-4 mr-2" /> Column Distributions
-         </h3>
-
-         {columns.map((col, idx) => (
-            <div key={idx} className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col">
-               <div className="bg-slate-50 px-3 py-2 border-b border-slate-200 flex justify-between items-center">
-                  <span className="font-bold text-slate-700 truncate w-3/4">{col.name}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border ${col.type === 'numeric' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                     {col.type}
-                  </span>
-               </div>
-
-               <div className="p-3">
-                  <div className="flex justify-between items-center mb-2">
-                     <span className="text-xs text-slate-500">
-                        {col.missing_percent > 0 ? (
-                           <span className="text-rose-500 font-medium bg-rose-50 px-1.5 rounded">{col.missing_percent.toFixed(1)}% NULL</span>
-                        ) : (
-                           <span className="text-emerald-600 font-medium bg-emerald-50 px-1.5 rounded">100% Filled</span>
-                        )}
-                     </span>
-                     <span className="text-xs text-slate-400">{col.unique_count} Unique</span>
-                  </div>
-
-                  {/* Sparkline / Distribution chart placeholder */}
-                  {col.distribution && col.distribution.length > 0 && (
-                     <div className="h-20 w-full mt-3">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <BarChart data={col.distribution.map((val, i) => ({name: i, val}))}>
-                           <Bar dataKey="val" fill={col.type === 'numeric' ? '#4f46e5' : '#94a3b8'} radius={[2, 2, 0, 0]} />
-                           <RechartsTooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-                         </BarChart>
-                       </ResponsiveContainer>
-                     </div>
-                  )}
-
-                  <div className="mt-3 text-[10px] text-slate-400 bg-slate-50 p-2 rounded flex flex-wrap gap-1">
-                     <span className="block w-full font-semibold text-slate-500 mb-1">Samples:</span>
-                     {col.samples.map((s, i) => <span key={i} className="bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-sm max-w-[80px] truncate">{s}</span>)}
-                  </div>
-               </div>
+      <p className="section-title">Column Profiles</p>
+      {profileData.columns?.map((col) => (
+        <div key={col.name} className="glass-light rounded-xl overflow-hidden">
+          <button onClick={() => setExpanded(expanded === col.name ? null : col.name)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-700/20 transition-colors text-left">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={cn('shrink-0', TYPE_BADGE[col.type] || 'badge-slate')}>{col.type}</span>
+              <span className="font-medium text-slate-200 truncate text-sm">{col.name}</span>
             </div>
-         ))}
-      </div>
+            <div className="flex items-center gap-4 shrink-0 ml-4">
+              {col.missing_count > 0 && <span className="text-xs text-amber-400">{col.missing_count} missing</span>}
+              <span className="text-xs text-slate-500">{col.unique_count} unique</span>
+              <span className="text-slate-600 text-xs">{expanded === col.name ? '▲' : '▼'}</span>
+            </div>
+          </button>
+
+          {expanded === col.name && (
+            <div className="px-4 pb-4 border-t border-slate-700/40 pt-3 animate-fade-in">
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {[['Mean', col.mean], ['Median', col.median], ['Std', col.std], ['Min', col.min], ['Max', col.max]].filter(([, v]) => v !== undefined).map(([k, v]) => (
+                  <div key={k} className="stat-card">
+                    <span className="text-xs text-slate-500">{k}</span>
+                    <span className="text-sm font-semibold text-slate-200">{typeof v === 'number' ? v.toFixed(2) : v}</span>
+                  </div>
+                ))}
+              </div>
+              {col.top_values?.length > 0 && (
+                <ResponsiveContainer width="100%" height={100}>
+                  <BarChart data={col.top_values.slice(0, 6).map(v => ({ name: String(v.value).slice(0, 10), count: v.count }))}>
+                    <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {col.top_values.slice(0, 6).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
